@@ -43,7 +43,7 @@
 		phoneNumber = '', 
 		password = '',
 		//------------------------ DeepSeek AI 配置区域 ------------------------
-		dsApiKey = 'sk-d1aead7f9d08438e8cf07f63efa20d3e',
+		dsApiKey = 'sk-0a5ee08143604334967a54a660424382',
 		dsApiUrl = 'https://api.deepseek.com/chat/completions',
 		dsModel = 'deepseek-flash';
 	//-----------------------------------------------------------------------------------------------------
@@ -380,4 +380,1462 @@
 						} else {
 							_d.getElementById('autoSubmitButton').setAttribute('class', 'btn btn-default');
 							logs.addLog('章节测试将不会自动提交', 'green');
-							GM_setValue('un
+							GM_setValue('unrivalautosubmit', '0');
+							_w.top.unrivalAutoSubmit = '0';
+						}
+					}
+					_d.getElementById('autoSaveButton').onclick = function() {
+						let autoSaveButton = _d.getElementById('autoSaveButton');
+						if (autoSaveButton.getAttribute('class') == 'btn btn-default') {
+							_d.getElementById('autoSaveButton').setAttribute('class', 'btn btn-success');
+							logs.addLog('不符合提交标准的章节测试将会自动保存', 'green');
+							GM_setValue('unrivalautosave', '1');
+							_w.top.unrivalAutoSave = '1';
+						} else {
+							_d.getElementById('autoSaveButton').setAttribute('class', 'btn btn-default');
+							logs.addLog('不符合提交标准的章节测试将不会自动保存，等待用户自己操作', 'green');
+							GM_setValue('unrivalautosave', '0');
+							_w.top.unrivalAutoSave = '0';
+						}
+					}
+					_d.getElementById('videoTimeButton').onclick = function() {
+						_d.getElementById('videoTime').style.display = 'block';
+						_d.getElementById('videoTimeContent').src = _p +
+							'//stat2-ans.chaoxing.com/task/s/index?courseid=' + courseId + '&clazzid=' +
+							classId;
+					}
+				}
+			}, 100),
+			loopjob = () => {
+				if (_w.top.unrivalScriptList && _w.top.unrivalScriptList.length > 1) {
+					logs.addLog('您同时开启了多个刷课脚本，会挂科，会挂科，会挂科', 'red');
+				}
+				if (cVersion < 8.6 * 10) {
+					logs.addLog('您的浏览器内核过老，请更新版本或使用主流浏览器', 'red');
+					stop = true;
+					return;
+				}
+				if (stop) {
+					return;
+				}
+				let missionli = missionList;
+				if (missionli == []) {
+					setTimeout(loopjob, 500);
+					return;
+				}
+				for (let itemName in missionli) {
+					if (missionli[itemName]['running']) {
+						setTimeout(loopjob, 500);
+						return;
+					}
+				}
+				for (let itemName in missionli) {
+					if (!missionli[itemName]['done']) {
+						switch (missionli[itemName]['type']) {
+							case 'video':
+								doVideo(missionli[itemName]);
+								break;
+							case 'document':
+								doDocument(missionli[itemName]);
+								break;
+							case 'work':
+								doWork(missionli[itemName]);
+								break;
+						}
+						setTimeout(loopjob, 500);
+						return;
+					}
+				}
+				if (busyThread <= 0) {
+					if (jumpType != 2) {
+						_w.top.jump = true;
+						logs.addLog('所有任务处理完毕，5秒后自动下一章', 'green');
+					} else {
+						logs.addLog('所有任务处理完毕，用户设置为不跳转，脚本已结束运行', 'green');
+					}
+					clearInterval(loopjob);
+				} else {
+					setTimeout(loopjob, 500);
+				}
+			},
+			readyCheck = () => {
+				setTimeout(function() {
+					try {
+						if (!isCat) {
+							logs.addLog(
+								'请使用<a href="https://docs.scriptcat.org/use/#%E5%AE%89%E8%A3%85%E6%89%A9%E5%B1%95" target="view_window">脚本猫</a>运行此脚本，使用其他脚本管理器不保证能正常运行',
+								'red');
+						}
+						if (_w.top.unrivalReviewMode == '1') {
+							logs.addLog('复习模式已开启，遇到已完成的视频任务不会跳过', 'green');
+							_d.getElementById('reviewModeButton').setAttribute('class', ['btn btn-default',
+								'btn btn-success'
+							][_w.top.unrivalReviewMode]);
+						}
+						if (_w.top.unrivalDoWork == '1') {
+							logs.addLog('自动做章节测试已开启，将会自动做章节测试', 'green');
+							_d.getElementById('autoDoWorkButton').setAttribute('class', ['btn btn-default',
+								'btn btn-success'
+							][_w.top.unrivalDoWork]);
+						}
+						_d.getElementById('autoSubmitButton').setAttribute('class', ['btn btn-default',
+							'btn btn-success'
+						][_w.top.unrivalAutoSubmit]);
+						_d.getElementById('autoSaveButton').setAttribute('class', ['btn btn-default',
+							'btn btn-success'
+						][_w.top.unrivalAutoSave]);
+					} catch (e) {
+						console.log(e);
+						readyCheck();
+						return;
+					}
+				}, 500);
+			}
+		readyCheck();
+		try {
+			var pageData = JSON.parse(param);
+		} catch (e) {
+			if (jumpType != 2) {
+				_w.top.jump = true;
+				logs.addLog('此页无任务，5秒后自动下一章', 'green');
+			} else {
+				logs.addLog('此页无任务，用户设置为不跳转，脚本已结束运行', 'green');
+			}
+			return;
+		}
+		var data = pageData['defaults'],
+			jobList = [],
+			classId = data['clazzId'],
+			chapterId = data['knowledgeid'],
+			reportUrl = data['reportUrl'],
+			ktoken = data['ktoken'];
+		UID = UID || data['userid'];
+		FID = FID || data['fid'];
+		for (let i = 0, l = pageData['attachments'].length; i < l; i++) {
+			let item = pageData['attachments'][i];
+			if (item['job'] != true || item['isPassed'] == true) {
+				if (_w.top.unrivalReviewMode == '1' && item['type'] == 'video') {
+					jobList.push(item);
+				}
+				continue;
+			} else {
+				jobList.push(item);
+			}
+		}
+		var video_getReady = (item) => {
+				let statusUrl = _p + '//' + _h + '/ananas/status/' + item['property']['objectid'] + '?k=' +
+					FID + '&flag=normal&_dc=' + String(Math.round(new Date())),
+					doubleSpeed = item['property']['doublespeed'];
+				let initialPlayTime = 0;
+				if (item['headOffset'] && _w.top.unrivalReviewMode == '0') {
+					initialPlayTime = Math.floor(parseInt(item['headOffset']) / 1000);
+				} else if (item['playTime'] && _w.top.unrivalReviewMode == '0') {
+					let pt = parseInt(item['playTime']);
+					initialPlayTime = pt > 10000 ? Math.floor(pt / 1000) : pt;
+				}
+				busyThread += 1;
+				GM_xmlhttpRequest({
+					method: "get",
+					headers: {
+						'Host': _h,
+						'Referer': vrefer,
+						'Sec-Fetch-Site': 'same-origin'
+					},
+					url: statusUrl,
+					onload: function(res) {
+						try {
+							busyThread -= 1;
+							let videoInfo = JSON.parse(res.responseText),
+								duration = videoInfo['duration'],
+								dtoken = videoInfo['dtoken'];
+							if (duration == undefined) {
+								_d.getElementById('joblist').innerHTML += `
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    ` + '[无效视频]' + item['property']['name'] + `
+                                </div>
+                            </div>`
+								return;
+							}
+							if (initialPlayTime >= duration) {
+								initialPlayTime = 0;
+							}
+							missionList['m' + item['jobid']] = {
+								'module': item['property']['module'],
+								'type': 'video',
+								'dtoken': dtoken,
+								'duration': duration,
+								'initialPlayTime': initialPlayTime,
+								'objectId': item['property']['objectid'],
+								'otherInfo': item['otherInfo'],
+								'doublespeed': doubleSpeed,
+								'jobid': item['jobid'],
+								'name': item['property']['name'],
+								'done': false,
+								'running': false
+							};
+							let progressTip = initialPlayTime > 0 ? ` (已看${initialPlayTime}秒)` : '';
+							_d.getElementById('joblist').innerHTML += `
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    ` + '[视频]' + item['property']['name'] + progressTip + `
+                                </div>
+                            </div>`
+						} catch (e) {}
+					},
+					onerror: function(err) {
+						console.log(err);
+						if (err.error && err.error.indexOf('@connect list') >= 0) {
+							logs.addLog('请添加安全网址 //@connect ' + _h, 'red');
+							stop = true;
+						} else {
+							logs.addLog('获取任务详情失败', 'red');
+						}
+					}
+				});
+			},
+			doVideo = (item) => {
+				if (rate <= 0) {
+					missionList['m' + item['jobid']]['running'] = true;
+					logs.addLog('奇怪的倍速，视频已自动跳过', 'red');
+					setTimeout(function() {
+						missionList['m' + item['jobid']]['running'] = false;
+						missionList['m' + item['jobid']]['done'] = true;
+					}, 5000);
+					return;
+				}
+				if (allowBackground && backGround) {
+					if (_w.top.document.getElementsByClassName('catalog_points_sa').length > 0 || _w.top.document
+						.getElementsByClassName('lock').length > 0) {
+						logs.addLog('您已安装超星挂机小助手，但此课程可能为闯关模式，不支持后台挂机，将为您在线完成', 'blue');
+					} else {
+						item['userid'] = UID;
+						item['classId'] = classId;
+						item['review'] = [false, true][_w.top.unrivalReviewMode];
+						item['reportUrl'] = reportUrl;
+						GM_setValue('unrivalBackgroundVideo', item);
+						_d.cookie = "videojs_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+						logs.addLog(
+							'您已安装超星挂机小助手，已添加至后台任务，<a href="unrivalxxtbackground/" target="view_window">点我查看后台</a>',
+							'green');
+						missionList['m' + item['jobid']]['running'] = true;
+						setTimeout(function() {
+							missionList['m' + item['jobid']]['running'] = false;
+							missionList['m' + item['jobid']]['done'] = true;
+						}, 5000);
+						return;
+					}
+				}
+				let videojs_id = String(parseInt(Math.random() * 9999999));
+				_d.cookie = 'videojs_id=' + videojs_id + ';path=/';
+				let startOffset = item['initialPlayTime'] || 0;
+				logs.addLog('开始刷视频：' + item['name'] + '，倍速：' + String(rate) + '倍' + (startOffset > 0 ? '（接上次进度：' + startOffset + '秒）' : ''));
+				logs.addLog('视频观看信息每60秒上报一次，请耐心等待', 'green');
+				if (disableMonitor) {
+					logs.addLog('解除多端学习监控有清除进度风险，请谨慎使用', 'red');
+				}
+				let dtype = 'Video';
+				if (item['module'].includes('audio')) {
+					dtype = 'Audio';
+					rt = '';
+				}
+				let playTime = startOffset,
+					playsTime = startOffset,
+					isdrag = '3',
+					first = true,
+					lastTickTime = Date.now(),
+					lastReportTime = 0,
+					reporting = false;
+
+				let loop = workerSetInterval(function() {
+					if (reporting) return;
+					let now = Date.now();
+					let elapsedSec = (now - lastTickTime) / 1000;
+					lastTickTime = now;
+
+					if (rate <= 0) {
+						workerClearInterval(loop);
+						logs.addLog('奇怪的倍速，视频已自动跳过', 'red');
+						setTimeout(function() {
+							missionList['m' + item['jobid']]['running'] = false;
+							missionList['m' + item['jobid']]['done'] = true;
+						}, 5000);
+						return;
+					} else if (item['doublespeed'] == 0 && rate > 1 && _w.top.unrivalReviewMode == '0') {
+						rate = 1;
+						logs.addLog('该视频不允许倍速播放，已恢复至一倍速', 'red');
+					}
+
+					if (!first) {
+						let validElapsed = Math.min(elapsedSec, 65);
+						playsTime += validElapsed * rate;
+						playTime = Math.ceil(playsTime);
+					}
+
+					let timeSinceLastReport = (now - lastReportTime) / 1000;
+					if (first || timeSinceLastReport >= 60 || playTime >= item['duration']) {
+						if (first) {
+							playTime = startOffset;
+							isdrag = '3';
+						} else if (playTime >= item['duration']) {
+							workerClearInterval(loop);
+							playTime = item['duration'];
+							isdrag = '4';
+						} else if (playTime > 0) {
+							isdrag = '0';
+						}
+						reporting = true;
+						lastReportTime = now;
+						busyThread += 1;
+						let _bold_playTime = playTime,
+							strEc =
+								`[${classId}][${UID}][${item['jobid']}][${item['objectId']}][${playTime * 1000}][d_yHJ!$pdA~5][${item['duration'] * 1000}][0_${item['duration']}]`,
+							bakenc = jq.md5(strEc);
+						
+						let enc = bakenc;
+						let reportsUrl = reportUrl + '/' + item['dtoken'] +
+							'?clazzId=' + classId + '&playingTime=' + _bold_playTime +
+							'&duration=' + item['duration'] + '&clipTime=0_' + item[
+								'duration'] + '&objectId=' + item['objectId'] +
+							'&otherInfo=' + item['otherInfo'] + '&jobid=' + item[
+								'jobid'] + '&userid=' + UID + '&isdrag=' + isdrag +
+							'&view=pc&enc=' + enc + '&rt=' + rt + '&dtype=' + dtype +
+							'&_t=' + String(Math.round(new Date()));
+						GM_xmlhttpRequest({
+							method: "get",
+							headers: {
+								'Host': _h,
+								'Referer': vrefer,
+								'Sec-Fetch-Site': 'same-origin',
+								'Content-Type': 'application/json'
+							},
+							url: reportsUrl,
+							onload: function(res) {
+								reporting = false;
+								try {
+									let today = new Date(),
+										todayStr = today.getFullYear() +
+										'd' + today.getMonth() + 'd' + today
+										.getDate(),
+										timelong = GM_getValue(
+											'unrivaltimelong', {});
+									if (timelong[UID] == undefined ||
+										timelong[UID]['today'] != todayStr
+									) {
+										timelong[UID] = {
+											'time': 0,
+											'today': todayStr
+										};
+									} else {
+										timelong[UID]['time']++;
+									}
+									GM_setValue('unrivaltimelong',
+										timelong);
+									busyThread -= 1;
+									if (timelong[UID]['time'] / 60 > 22 &&
+										item['doublespeed'] == 0 && _w.top
+										.unrivalReviewMode == '0') {
+										workerClearInterval(loop);
+										logs.addLog(
+											'今日学习时间过长，继续学习会导致清空进度，请明天再来',
+											'red');
+										setTimeout(function() {
+											missionList['m' + item[
+												'jobid']][
+												'running'
+											] = false;
+											missionList['m' + item[
+												'jobid']][
+												'done'
+											] = true;
+										}, 5000);
+										return;
+									}
+									let ispass = JSON.parse(res
+										.responseText);
+									first = false;
+									lastTickTime = Date.now();
+									if (ispass['isPassed'] && _w.top
+										.unrivalReviewMode == '0') {
+										logs.addLog('视频任务已完成', 'green');
+										missionList['m' + item['jobid']][
+											'running'
+										] = false;
+										missionList['m' + item['jobid']][
+											'done'
+										] = true;
+										workerClearInterval(loop);
+									} else if (isdrag == '4') {
+										if (_w.top.unrivalReviewMode ==
+											'1') {
+											logs.addLog('视频已观看完毕', 'green');
+										} else {
+											logs.addLog('视频已观看完毕，但视频任务未完成',
+												'red');
+										}
+										missionList['m' + item['jobid']][
+											'running'
+										] = false;
+										missionList['m' + item['jobid']][
+											'done'
+										] = true;
+										workerClearInterval(loop);
+									} else {
+										logs.addLog(item['name'] + '已观看' +
+											_bold_playTime + '秒，剩余大约' +
+											String(item['duration'] -
+												_bold_playTime) + '秒');
+									}
+								} catch (e) {
+									console.log(e);
+									if (res.responseText.indexOf('验证码') >=
+										0) {
+										logs.addLog('已被超星风控，请<a href="' +
+											reportsUrl +
+											'" target="_blank">点我处理</a>，60秒后自动刷新页面',
+											'red');
+										missionList['m' + item['jobid']][
+											'running'
+										] = false;
+										workerClearInterval(loop);
+										stop = true;
+										setTimeout(function() {
+											_l.reload();
+										}, 60000);
+										return;
+									}
+									if (rt == '0.9') {
+										if (first) {
+											logs.addLog('超星返回错误信息，尝试更换参数',
+												'orange');
+											rt = '1';
+											lastReportTime = Date.now() - 57000;
+										} else {
+											logs.addLog('超星返回错误信息，十秒后重试(1)',
+												'red');
+											lastReportTime = Date.now() - 50000;
+										}
+										return;
+									} else {
+										if (first) {
+											rt = '0.9';
+										}
+										logs.addLog('超星返回错误信息，十秒后重试(2)',
+											'red');
+										lastReportTime = Date.now() - 50000;
+										return;
+									}
+								}
+							},
+							onerror: function(err) {
+								reporting = false;
+								busyThread -= 1;
+								logs.addLog('观看视频网络请求失败', 'red');
+								missionList['m' + item['jobid']][
+									'running'
+								] = false;
+								workerClearInterval(loop);
+							}
+						});
+					}
+				}, 1000);
+				missionList['m' + item['jobid']]['running'] = true;
+			},
+			doDocument = (item) => {
+				missionList['m' + item['jobid']]['running'] = true;
+				logs.addLog('开始刷文档：' + item['name']);
+				setTimeout(function() {
+					busyThread += 1;
+					GM_xmlhttpRequest({
+						method: "get",
+						url: _p + '//' + _h + '/ananas/job/document?jobid=' + item['jobid'] +
+							'&knowledgeid=' + chapterId + '&courseid=' + courseId + '&clazzid=' +
+							classId + '&jtoken=' + item['jtoken'],
+						onload: function(res) {
+							try {
+								busyThread -= 1;
+								let ispass = JSON.parse(res.responseText);
+								if (ispass['status']) {
+									logs.addLog('文档任务已完成', 'green');
+								} else {
+									logs.addLog('文档已阅读完成，但任务点未完成', 'red');
+								}
+
+							} catch (err) {
+								logs.addLog('解析文档内容失败', 'red');
+							}
+							missionList['m' + item['jobid']]['running'] = false;
+							missionList['m' + item['jobid']]['done'] = true;
+						},
+						onerror: function(err) {
+							busyThread -= 1;
+							logs.addLog('阅读文档失败', 'red');
+							missionList['m' + item['jobid']]['running'] = false;
+							missionList['m' + item['jobid']]['done'] = true;
+						}
+					});
+				}, parseInt(Math.random() * 2000 + 9000, 10))
+			},
+			doWork = (item) => {
+				missionList['m' + item['jobid']]['running'] = true;
+				logs.addLog('开始刷章节测试：' + item['name']);
+				logs.addLog('您设置的答题正确率为：' + String(accuracy) + '%，高于此正确率时会自动提交', 'blue');
+				_d.getElementById('workPanel').style.display = 'block';
+				_d.getElementById('frame_content').src = _p + '//' + _h + '/work/phone/work?workId=' + item['jobid']
+					.replace('work-', '') + '&courseId=' + courseId + '&clazzId=' + classId + '&knowledgeId=' +
+					chapterId + '&jobId=' + item['jobid'] + '&enc=' + item['enc'];
+				_w.top.unrivalWorkInfo = '';
+				_w.top.unrivalDoneWorkId = '';
+				setInterval(function() {
+					if (_w.top.unrivalWorkInfo != '') {
+						logs.addLog(_w.top.unrivalWorkInfo);
+						_w.top.unrivalWorkInfo = '';
+					}
+				}, 100);
+				let checkcross = setInterval(function() {
+					if (_w.top.unrivalWorkDone == false) {
+						clearInterval(checkcross);
+						return;
+					}
+					let ifW = _d.getElementById('frame_content').contentWindow;
+					try {
+						ifW.location.href;
+					} catch (e) {
+						if (e.message.indexOf('cross-origin') != -1) {
+							clearInterval(checkcross);
+							_w.top.unrivalWorkDone = true;
+							return;
+						}
+					}
+				}, 2000);
+				let workDoneInterval = setInterval(function() {
+					if (_w.top.unrivalWorkDone) {
+						_w.top.unrivalWorkDone = false;
+						clearInterval(workDoneInterval);
+						_w.top.unrivalDoneWorkId = '';
+						setTimeout(function() {
+							_d.getElementById('workPanel').style.display = 'none';
+							missionList['m' + item['jobid']]['running'] = false;
+							missionList['m' + item['jobid']]['done'] = true;
+						}, 3000);
+					}
+				}, 500);
+			},
+			missionList = [];
+		if (jobList.length <= 0) {
+			if (jumpType != 2) {
+				_w.top.jump = true;
+				logs.addLog('此页无任务，5秒后自动下一章', 'green');
+			} else {
+				logs.addLog('此页无任务，用户设置为不跳转，脚本已结束运行', 'green');
+			}
+			return;
+		}
+		for (let i = 0, l = jobList.length; i < l; i++) {
+			let item = jobList[i];
+			if (item['type'] == 'video') {
+				video_getReady(item);
+			} else if (item['type'] == 'document') {
+				missionList['m' + item['jobid']] = {
+					'type': 'document',
+					'jtoken': item['jtoken'],
+					'jobid': item['jobid'],
+					'name': item['property']['name'],
+					'done': false,
+					'running': false
+				};
+				_d.getElementById('joblist').innerHTML += `
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    ` + '[文档]' + item['property']['name'] + `
+                                </div>
+                            </div>`
+			} else if (item['type'] == 'workid' && _w.top.unrivalDoWork == '1') {
+				missionList['m' + item['jobid']] = {
+					'type': 'work',
+					'workid': item['property']['workid'],
+					'jobid': item['jobid'],
+					'name': item['property']['title'],
+					'enc': item['enc'],
+					'done': false,
+					'running': false
+				};
+				_d.getElementById('joblist').innerHTML += `
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    ` + '[章节测试]' + item['property']['title'] + `
+                                </div>
+                            </div>`
+			} else {
+				try {
+					let jobName = item['property']['name'];
+					if (jobName == undefined) {
+						jobName = item['property']['title'];
+					}
+					_d.getElementById('joblist').innerHTML += `
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    ` + '已跳过：' + jobName + `
+                                </div>
+                            </div>`
+				} catch (e) {}
+			}
+		}
+		loopjob();
+	} else if (_l.href.indexOf("mycourse/studentstudy") > 0) {
+		setInterval(function() {
+			try {
+				_w.jQuery.fn.viewer.Constructor.prototype.show = () => {};
+			} catch (e) {}
+		}, 1000);
+		try {
+			_w.unrivalScriptList.push('Fuck me please');
+		} catch (e) {
+			_w.unrivalScriptList = ['Fuck me please'];
+		}
+
+		function checkOffline() {
+			let dleft = _d.getElementsByClassName('left');
+			if (dleft.length == 1) {
+				let img = dleft[0].getElementsByTagName('img');
+				if (img.length == 1) {
+					if (img[0].src.indexOf('loading.gif') != -1) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		setInterval(function() {
+			if (checkOffline()) {
+				setTimeout(function() {
+					if (checkOffline()) {
+						_l.reload();
+					}
+				}, 10000)
+			}
+		}, 3000);
+		_w.unrivalgetTeacherAjax = _w.getTeacherAjax;
+		_w.getTeacherAjax = (courseid, classid, cid) => {
+			if (cid == getQueryVariable('chapterId')) {
+				return;
+			}
+			_w.top.unrivalPageRd = '';
+			_w.unrivalgetTeacherAjax(courseid, classid, cid);
+		}
+		if (disableMonitor == 1) {
+			_w.appendChild = _w.Element.prototype.appendChild;
+			_w.Element.prototype.appendChild = function() {
+				try {
+					if (arguments[0].src.indexOf('detect.chaoxing.com') > 0) {
+						return;
+					}
+				} catch (e) {}
+				_w.appendChild.apply(this, arguments);
+			};
+		}
+
+		_w.jump = false;
+		workerSetInterval(function() {
+			if (getQueryVariable('mooc2') == '1') {
+				let tabs = _d.getElementsByClassName('posCatalog_select');
+				for (let i = 0, l = tabs.length; i < l; i++) {
+					let tabId = tabs[i].getAttribute('id');
+					if (tabId.indexOf('cur') >= 0 && tabs[i].getAttribute('class') == 'posCatalog_select') {
+						tabs[i].setAttribute('onclick', "getTeacherAjax('" + courseId + "','" + classId +
+							"','" + tabId.replace('cur', '') + "');");
+					}
+				}
+			} else {
+				let h4s = _d.getElementsByTagName('h4'),
+					h5s = _d.getElementsByTagName('h5');
+				for (let i = 0, l = h4s.length; i < l; i++) {
+					if (h4s[i].getAttribute('id').indexOf('cur') >= 0) {
+						h4s[i].setAttribute('onclick', "getTeacherAjax('" + courseId + "','" + classId +
+							"','" + h4s[i].getAttribute('id').replace('cur', '') + "');");
+					}
+				}
+				for (let i = 0, l = h5s.length; i < l; i++) {
+					if (h5s[i].getAttribute('id').indexOf('cur') >= 0) {
+						h5s[i].setAttribute('onclick', "getTeacherAjax('" + courseId + "','" + classId +
+							"','" + h5s[i].getAttribute('id').replace('cur', '') + "');");
+					}
+				}
+			}
+		}, 1000);
+		workerSetInterval(function() {
+			let but = null;
+			if (_w.jump) {
+				_w.jump = false;
+				_w.top.unrivalDoneWorkId = '';
+				_w.jjump = (rd) => {
+					if (rd != _w.top.unrivalPageRd) {
+						return;
+					}
+					try {
+						setTimeout(function() {
+							if (jumpType == 1) {
+								if (getQueryVariable('mooc2') == '1') {
+									but = _d.getElementsByClassName(
+										'jb_btn jb_btn_92 fs14 prev_next next');
+								} else {
+									but = _d.getElementsByClassName('orientationright');
+								}
+								try {
+									setTimeout(function() {
+										if (rd != _w.top.unrivalPageRd) {
+											return;
+										}
+										but[0].click();
+									}, 2000);
+								} catch (e) {}
+								return;
+							}
+							if (getQueryVariable('mooc2') == '1') {
+								let ul = _d.getElementsByClassName('prev_ul')[0],
+									lis = ul.getElementsByTagName('li');
+								for (let i = 0, l = lis.length; i < l; i++) {
+									if (lis[i].getAttribute('class') == 'active') {
+										if (i + 1 >= l) {
+											break;
+										} else {
+											try {
+												lis[i + 1].click();
+											} catch (e) {}
+											return;
+										}
+									}
+								}
+								let tabs = _d.getElementsByClassName('posCatalog_select');
+								for (let i = 0, l = tabs.length; i < l; i++) {
+									if (tabs[i].getAttribute('class') ==
+										'posCatalog_select posCatalog_active') {
+										while (i + 1 < tabs.length) {
+											let nextTab = tabs[i + 1];
+											if ((nextTab.innerHTML.includes(
+														'icon_Completed prevTips') && _w.top
+													.unrivalReviewMode == '0') || nextTab
+												.innerHTML.includes(
+													'catalog_points_er prevTips')) {
+												i++;
+												continue;
+											}
+											if (nextTab.id.indexOf('cur') < 0) {
+												i++;
+												continue;
+											}
+											let clickF = setInterval(function() {
+												if (rd != _w.top.unrivalPageRd) {
+													clearInterval(clickF);
+													return;
+												}
+												nextTab.click();
+											}, 2000);
+											break;
+										}
+										break;
+									}
+								}
+							} else {
+								let div = _d.getElementsByClassName('tabtags')[0],
+									spans = div.getElementsByTagName('span');
+								for (let i = 0, l = spans.length; i < l; i++) {
+									if (spans[i].getAttribute('class').indexOf('currents') >=
+										0) {
+										if (i + 1 == l) {
+											break;
+										} else {
+											try {
+												spans[i + 1].click();
+											} catch (e) {}
+											return;
+										}
+									}
+								}
+								let tabs = _d.getElementsByTagName('span'),
+									newTabs = [];
+								for (let i = 0, l = tabs.length; i < l; i++) {
+									if (tabs[i].getAttribute('style') != null && tabs[i]
+										.getAttribute('style').indexOf(
+											'cursor:pointer;height:18px;') >= 0) {
+										newTabs.push(tabs[i]);
+									}
+								}
+								tabs = newTabs;
+								for (let i = 0, l = tabs.length; i < l; i++) {
+									if (tabs[i].parentNode.getAttribute('class') ==
+										'currents') {
+										while (i + 1 < tabs.length) {
+											let nextTab = tabs[i + 1].parentNode;
+											if ((nextTab.innerHTML.includes(
+														'roundpoint  blue') && _w.top
+													.unrivalReviewMode == '0') || nextTab
+												.innerHTML.includes('roundpointStudent  lock')
+											) {
+												i++;
+												continue;
+											}
+											if (nextTab.id.indexOf('cur') < 0) {
+												i++;
+												continue;
+											}
+											let clickF = setInterval(function() {
+												if (rd != _w.top.unrivalPageRd) {
+													clearInterval(clickF);
+													return;
+												}
+												nextTab.click();
+											}, 2000);
+											break;
+										}
+										break;
+									}
+								}
+							}
+						}, 2000);
+					} catch (e) {}
+				}
+				_w.onReadComplete1();
+				setTimeout('jjump("' + _w.top.unrivalPageRd + '")', 2856);
+			}
+		}, 200);
+	} else if (_l.href.indexOf("work/phone/doHomeWork") > 0) {
+		var wIdE = _d.getElementById('workLibraryId') || _d.getElementById('oldWorkId'),
+			wid = wIdE ? wIdE.value : '';
+		_w.top.unrivalWorkDone = false;
+		_w.aalert = _w.alert;
+		_w.alert = (msg) => {
+			if (msg == '保存成功') {
+				_w.top.unrivalDoneWorkId = getQueryVariable('workId');
+				_w.top.unrivalWorkDone = true;
+				return;
+			}
+			aalert(msg);
+		}
+		if (_w.top.unrivalDoneWorkId == getQueryVariable('workId')) {
+			_w.top.unrivalWorkDone = true;
+			return;
+		}
+		_w.confirm = (msg) => {
+			return true;
+		}
+		var questionList = [],
+			questionsElement = _d.getElementsByClassName('Py-mian1'),
+			questionNum = questionsElement.length,
+			totalQuestionNum = questionNum;
+		for (let i = 0; i < questionNum; i++) {
+			let questionElement = questionsElement[i],
+				idElements = questionElement.getElementsByTagName('input'),
+				questionId = '0',
+				question = questionElement.getElementsByClassName('Py-m1-title fs16')[0].innerHTML;
+			question = question.replace(/(<([^>]+)>)/ig, '').replace(/[0-9]{1,3}.\[(.*?)\]/ig, '').replaceAll('\n',
+				'').replace(/^\s+/ig, '').replace(/\s+$/ig, '');
+			for (let z = 0, k = idElements.length; z < k; z++) {
+				try {
+					if (idElements[z].getAttribute('name').indexOf('answer') >= 0) {
+						questionId = idElements[z].getAttribute('name').replace('type', '');
+						break;
+					}
+				} catch (e) {
+					continue;
+				}
+			}
+			if (questionId == '0' || question == '') {
+				continue;
+			}
+			let typeE = questionElement.getElementsByTagName('input');
+			if (typeE == null || typeE == []) {
+				continue;
+			}
+			let typeN = 'fuckme';
+			for (let g = 0, h = typeE.length; g < h; g++) {
+				if (typeE[g].id == 'answertype' + questionId.replace('answer', '').replace('check', '')) {
+					typeN = typeE[g].value;
+					break;
+				}
+			}
+			if (['0', '1', '3'].indexOf(typeN) < 0) {
+				continue;
+			}
+			let type = {
+				'0': '单选题',
+				'1': '多选题',
+				'3': '判断题'
+			} [typeN];
+			let optionList = {
+				length: 0
+			};
+			if (['单选题', '多选题'].indexOf(type) >= 0) {
+				let answersElements = questionElement.getElementsByClassName('answerList')[0].getElementsByTagName(
+					'li');
+				for (let x = 0, j = answersElements.length; x < j; x++) {
+					let optionE = answersElements[x],
+						optionTextE = trim(optionE.innerHTML.replace(/(^\s*)|(\s*$)/g, "")),
+						optionText = optionTextE.slice(1).replace(/(^\s*)|(\s*$)/g, ""),
+						optionValue = optionTextE.slice(0, 1),
+						optionId = optionE.getAttribute('id-param');
+					if (optionText == '') {
+						break;
+					}
+					optionList[optionText] = {
+						'id': optionId,
+						'value': optionValue
+					}
+					optionList.length++;
+				}
+				if (answersElements.length != optionList.length) {
+					continue;
+				}
+			}
+			questionList.push({
+				'question': question,
+				'type': type,
+				'questionid': questionId,
+				'options': optionList
+			});
+		}
+
+		// ================= 核心选填答案函数 =================
+		var applyAnswer = function(result, quu, sourceName) {
+			try {
+				let choiceEs = _d.getElementsByTagName('li');
+				let rawId = quu['questionid'].replace('answer', '');
+				_w.top.unrivalWorkInfo = '[' + sourceName + '] 题目：' + quu['question'] + ' -> 答案：' + result;
+				switch (quu['type']) {
+					case '判断题':
+						(function() {
+							let answer = 'abaabaaba';
+							if ('正确是对√Tri'.indexOf(result) >= 0 || result.includes('正确') || result.includes('对') || result.toLowerCase().includes('true')) {
+								answer = 'true';
+							} else if ('错误否错×Fwr'.indexOf(result) >= 0 || result.includes('错误') || result.includes('错') || result.toLowerCase().includes('false')) {
+								answer = 'false';
+							}
+							for (let u = 0, k = choiceEs.length; u < k; u++) {
+								if (choiceEs[u].getAttribute('val-param') == answer &&
+									choiceEs[u].getAttribute('id-param') == rawId) {
+									if (!choiceEs[u].className.includes('cur')) {
+										choiceEs[u].click();
+									}
+									questionNum -= 1;
+									return;
+								}
+							}
+							if (randomDo == 1 && accuracy < 100) {
+								_w.top.unrivalWorkInfo = quu['question'] + '：未匹配到选项，自动选【错】';
+								for (let u = 0, k = choiceEs.length; u < k; u++) {
+									if (choiceEs[u].getElementsByTagName('em').length < 1) continue;
+									if (choiceEs[u].getAttribute('val-param') == 'false' &&
+										choiceEs[u].getAttribute('id-param') == rawId) {
+										if (!choiceEs[u].className.includes('cur')) {
+											choiceEs[u].click();
+										}
+										return;
+									}
+								}
+							}
+						})();
+						break;
+					case '单选题':
+						(function() {
+							let answerData = trim(result).replace(/\s/ig, '');
+							for (let option in quu['options']) {
+								if (option === 'length') continue;
+								let cleanOpt = trim(option).replace(/\s/ig, '');
+								let optLetter = quu['options'][option]['value'];
+								if (cleanOpt == answerData || cleanOpt.includes(answerData) || answerData.includes(cleanOpt) || answerData.toUpperCase() === optLetter) {
+									for (let y = 0, j = choiceEs.length; y < j; y++) {
+										if (choiceEs[y].getElementsByTagName('em').length < 1) continue;
+										if (choiceEs[y].getElementsByTagName('em')[0].getAttribute('id-param') == optLetter &&
+											choiceEs[y].getAttribute('id-param') == rawId) {
+											if (!choiceEs[y].getAttribute('class').includes('cur')) {
+												choiceEs[y].click();
+											}
+											questionNum -= 1;
+											return;
+										}
+									}
+								}
+							}
+							if (randomDo == 1 && accuracy < 100) {
+								_w.top.unrivalWorkInfo = quu['question'] + '：未匹配到选项，自动选【B】';
+								for (let y = 0, j = choiceEs.length; y < j; y++) {
+									if (choiceEs[y].getElementsByTagName('em').length < 1) continue;
+									if (choiceEs[y].getElementsByTagName('em')[0].getAttribute('id-param') == 'B' &&
+										choiceEs[y].getAttribute('id-param') == rawId) {
+										if (!choiceEs[y].getAttribute('class').includes('cur')) {
+											choiceEs[y].click();
+										}
+										return;
+									}
+								}
+							}
+						})();
+						break;
+					case '多选题':
+						(function() {
+							let answerData = trim(result).replace(/\s/ig, ''),
+								hasAnswer = false;
+							for (let option in quu['options']) {
+								if (option === 'length') continue;
+								let cleanOpt = trim(option).replace(/\s/ig, '');
+								let optLetter = quu['options'][option]['value'];
+								if (answerData.includes(cleanOpt) || cleanOpt.includes(answerData)) {
+									for (let y = 0, j = choiceEs.length; y < j; y++) {
+										if (choiceEs[y].getElementsByTagName('em').length < 1) continue;
+										if (choiceEs[y].getElementsByTagName('em')[0].getAttribute('id-param') == optLetter &&
+											choiceEs[y].getAttribute('id-param') == rawId) {
+											if (!choiceEs[y].getAttribute('class').includes('cur')) {
+												choiceEs[y].click();
+											}
+											hasAnswer = true;
+											break;
+										}
+									}
+								}
+							}
+							if (hasAnswer) {
+								questionNum -= 1;
+							} else if (randomDo == 1 && accuracy < 100) {
+								_w.top.unrivalWorkInfo = quu['question'] + '：未匹配到选项，自动全选';
+								for (let y = 0, j = choiceEs.length; y < j; y++) {
+									if (choiceEs[y].getElementsByTagName('em').length < 1) continue;
+									if (choiceEs[y].getAttribute('id-param') == rawId) {
+										if (!choiceEs[y].getAttribute('class').includes('cur')) {
+											choiceEs[y].click();
+										}
+									}
+								}
+							}
+						})();
+						break;
+				}
+			} catch (e) {
+				console.log(e);
+			}
+		};
+
+		// ================= DeepSeek AI 兜底答题函数 =================
+		var askDeepSeekAI = function(quu, modelNameOverride) {
+			let currentModel = modelNameOverride || dsModel;
+			let optionsStr = '';
+			if (quu['type'] === '单选题' || quu['type'] === '多选题') {
+				for (let optText in quu['options']) {
+					if (optText === 'length') continue;
+					optionsStr += quu['options'][optText]['value'] + '. ' + optText + '\n';
+				}
+			}
+
+			let systemPrompt = '你是一个精准的在线课程答题助手。请根据用户提供的题型、题目和选项，直接给出最准确的答案。\n' +
+				'严格遵循以下输出格式要求（不要输出任何解释、标点或多余文字）：\n' +
+				'1. 如果是【判断题】，只能输出“正确”或“错误”两个字。\n' +
+				'2. 如果是【单选题】，请直接输出正确选项对应的完整文字内容（不要带A/B/C/D前缀）。\n' +
+				'3. 如果是【多选题】，请直接输出所有正确选项对应的完整文字内容，多个选项之间用#号拼接（不要带A/B/C/D前缀）。';
+
+			let userPrompt = `【题型】：${quu['type']}\n【题目】：${quu['question']}\n`;
+			if (optionsStr) {
+				userPrompt += `【选项】：\n${optionsStr}`;
+			}
+
+			GM_xmlhttpRequest({
+				method: "POST",
+				url: dsApiUrl,
+				headers: {
+					"Content-Type": "application/json",
+					"Authorization": "Bearer " + dsApiKey
+				},
+				timeout: 20000,
+				data: JSON.stringify({
+					model: currentModel,
+					messages: [
+						{ role: "system", content: systemPrompt },
+						{ role: "user", content: userPrompt }
+					],
+					temperature: 0.1,
+					max_tokens: 500
+				}),
+				onload: function(res) {
+					try {
+						if (res.status !== 200) {
+							if (!modelNameOverride && currentModel === 'deepseek-flash') {
+								askDeepSeekAI(quu, 'deepseek-v4.1-flash-1017');
+								return;
+							} else if (currentModel === 'deepseek-v4.1-flash-1017') {
+								askDeepSeekAI(quu, 'deepseek-chat');
+								return;
+							}
+							_w.top.unrivalWorkInfo = 'DeepSeek API报错(' + res.status + ')：' + res.responseText.slice(0, 100);
+							busyThread -= 1;
+							return;
+						}
+						let data = JSON.parse(res.responseText);
+						let aiAnswer = data.choices[0].message.content.trim();
+						if (quu['type'] === '单选题' && /^[A-Z][\.\、\s]\s*/.test(aiAnswer)) {
+							aiAnswer = aiAnswer.replace(/^[A-Z][\.\、\s]\s*/, '');
+						}
+						applyAnswer(aiAnswer, quu, 'DeepSeek-AI');
+					} catch (e) {
+						console.log(e);
+						_w.top.unrivalWorkInfo = 'DeepSeek 答案解析失败';
+					}
+					busyThread -= 1;
+				},
+				onerror: function(err) {
+					_w.top.unrivalWorkInfo = 'DeepSeek API请求失败，请检查网络或跨域权限';
+					console.log(err);
+					busyThread -= 1;
+				},
+				ontimeout: function() {
+					_w.top.unrivalWorkInfo = 'DeepSeek API请求超时';
+					busyThread -= 1;
+				}
+			});
+		};
+
+		// ================= 【v1.44 新增】题库 IP 限流自动熔断与严格校验 =================
+		var tikuRateLimited = false,
+			qu = null,
+			nowTime = -2000,
+			busyThread = questionList.length,
+			ctOnload = function(res, quu) {
+				var ctResult = {
+					'code': -1,
+					'data': ''
+				};
+				if (res && res.responseText) {
+					try {
+						ctResult = JSON.parse(res.responseText);
+					} catch (e) {
+						ctResult = { 'code': -1 };
+					}
+				}
+				let dataStr = String(ctResult['data'] || '').trim();
+				let msgStr = String(ctResult['msg'] || '').trim();
+				let fullText = dataStr + msgStr;
+
+				// 检测题库是否返回了“IP超出使用限制 / 频繁 / 额度 / 未找到”等报错信息
+				let isLimitOrError = /限制|频繁|上限|额度|未找到|无答案|错误|失败|error|limit|null/i.test(fullText);
+				if (/限制|频繁|上限|额度|limit/i.test(fullText)) {
+					tikuRateLimited = true;
+				}
+
+				// 只要 code 不等于 1，或者内容为空，或者包含限流/报错字样，一律无缝移交 DeepSeek AI 作答！
+				if (ctResult['code'] != 1 || !dataStr || isLimitOrError) {
+					let reason = tikuRateLimited ? '题库IP限流已熔断' : '题库未收录';
+					_w.top.unrivalWorkInfo = '[' + reason + '] 正在由 DeepSeek AI 作答：' + quu['question'].slice(0, 18) + '...';
+					askDeepSeekAI(quu);
+					return;
+				}
+				busyThread -= 1;
+				applyAnswer(dataStr, quu, '题库');
+			};
+
+		for (let i = 0, l = questionList.length; i < l; i++) {
+			nowTime += parseInt(Math.random() * 1500 + 2000, 10);
+			setTimeout(function() {
+				let currentQu = questionList[i];
+				// 如果前面的题已经检测到题库 IP 限流，后续题目直接跳过题库，100% 交由 DeepSeek AI 秒答
+				if (tikuRateLimited) {
+					_w.top.unrivalWorkInfo = '[AI直连] 题库限流跳过，DeepSeek AI 正在作答：' + currentQu['question'].slice(0, 18) + '...';
+					askDeepSeekAI(currentQu);
+					return;
+				}
+				let param = 'question=' + encodeURIComponent(currentQu['question']);
+				if (ctUrl.includes('icodef')) {
+					param += '&type=' + {
+						'单选题': '0',
+						'多选题': '1',
+						'判断题': '3'
+					} [currentQu['type']] + '&id=' + wid;
+				}
+				GM_xmlhttpRequest({
+					method: "POST",
+					headers: {
+						'Content-type': 'application/x-www-form-urlencoded',
+						'Authorization': token,
+					},
+					url: ctUrl,
+					timeout: 3500,
+					data: param,
+					onload: function(res) {
+						ctOnload(res, currentQu);
+					},
+					onerror: function() {
+						ctOnload(false, currentQu);
+					},
+					ontimeout: function() {
+						ctOnload(false, currentQu);
+					}
+				});
+			}, nowTime);
+		}
+
+		var fireAllClickEvents = function(el) {
+			if (!el) return;
+			try {
+				el.click();
+			} catch (e) {}
+			try {
+				let $ = _w.jQuery || _w.Zepto || _w.$;
+				if ($) {
+					$(el).trigger('tap').trigger('click');
+				}
+			} catch (e) {}
+			try {
+				let touchStart = new Event('touchstart', { bubbles: true, cancelable: true });
+				let touchEnd = new Event('touchend', { bubbles: true, cancelable: true });
+				el.dispatchEvent(touchStart);
+				el.dispatchEvent(touchEnd);
+			} catch (e) {}
+		};
+
+		// ================= 修复后的真实提交与确认弹窗穿透逻辑 =================
+		var workInterval = workerSetInterval(function() {
+			if (busyThread > 0) {
+				return;
+			}
+			workerClearInterval(workInterval);
+
+			let currentAccuracy = totalQuestionNum > 0 ? Math.floor(((totalQuestionNum - questionNum) / totalQuestionNum) * 100) : 100;
+			_w.top.unrivalWorkInfo = '答题完毕，当前识别率：' + currentAccuracy + '%';
+
+			if (currentAccuracy >= accuracy && _w.top.unrivalAutoSubmit == '1') {
+				_w.top.unrivalWorkInfo = '正确率符合标准，正在唤起提交弹窗...';
+				setTimeout(function() {
+					try {
+						if (typeof _w.submitCheckTimes === 'function') {
+							_w.submitCheckTimes();
+						} else if (typeof _w.btnBlueSubmit === 'function') {
+							_w.btnBlueSubmit();
+						} else {
+							let allBtns = _d.querySelectorAll('a, button, div, span');
+							for (let b of allBtns) {
+								if ((b.innerText || '').trim() === '提交' && b.offsetParent !== null) {
+									fireAllClickEvents(b);
+									break;
+								}
+							}
+						}
+					} catch (e) {
+						console.log('唤起提交弹窗异常:', e);
+					}
+
+					let confirmTryCount = 0;
+					let confirmTimer = workerSetInterval(function() {
+						confirmTryCount++;
+						try {
+							let candidates = _d.querySelectorAll('a, span, button, div, li');
+							let clicked = false;
+							for (let el of candidates) {
+								if (el.children.length === 0) {
+									let txt = (el.innerText || el.textContent || '').trim();
+									if ((txt === '确认' || txt === '确定' || txt === '确认提交') && el.offsetParent !== null) {
+										_w.top.unrivalWorkInfo = '已捕获【确认提交】弹窗，正在自动点击确认...';
+										fireAllClickEvents(el);
+										if (el.parentElement) {
+											fireAllClickEvents(el.parentElement);
+										}
+										clicked = true;
+									}
+								}
+							}
+
+							if (confirmTryCount >= 2) {
+								if (typeof _w.submitWork === 'function') {
+									_w.submitWork();
+								} else if (typeof _w.form1submit === 'function') {
+									_w.form1submit();
+								} else if (typeof _w.doSubmit === 'function') {
+									_w.doSubmit();
+								} else if (typeof _w.submitForm === 'function') {
+									_w.submitForm();
+								}
+							}
+
+							if (clicked && confirmTryCount >= 6 || confirmTryCount >= 16) {
+								workerClearInterval(confirmTimer);
+							}
+						} catch (e) {
+							console.log('点击确认弹窗异常:', e);
+						}
+					}, 500);
+
+					setTimeout(function() {
+						_w.top.unrivalDoneWorkId = getQueryVariable('workId');
+						_w.top.unrivalWorkDone = true;
+					}, 15000);
+				}, 2000);
+			} else if (_w.top.unrivalAutoSave == '1' || _w.top.unrivalAutoSave == 1) {
+				_w.top.unrivalWorkInfo = '正确率不符合标准或未设置自动提交，已自动保存答案';
+				setTimeout(function() {
+					_w.top.unrivalDoneWorkId = getQueryVariable('workId');
+					try {
+						if (typeof _w.noSubmit === 'function') {
+							_w.noSubmit();
+						} else if (typeof _w.saveWork === 'function') {
+							_w.saveWork();
+						}
+					} catch (e) {}
+					setTimeout(function() {
+						_w.top.unrivalWorkDone = true;
+					}, 6000);
+				}, 2000);
+			} else {
+				_w.top.unrivalWorkInfo = '未开启自动提交或未达标，请手动提交或开启自动保存';
+			}
+		}, 1000);
+	} else if (_l.href.includes('work/phone/selectWorkQuestionYiPiYue')) {
+		_w.top.unrivalWorkInfo = '章节测试已成功提交并显示答案！即将跳转下一章...';
+		_w.top.unrivalDoneWorkId = getQueryVariable('workId');
+		setTimeout(function() {
+			_w.top.unrivalWorkDone = true;
+		}, 2000);
+	} else if (_l.href.includes('stat2-ans.chaoxing.com/task/s/index')) {
+		if (_w.top == _w) {
+			return;
+		}
+		_d.getElementsByClassName('page-container studentStatistic')[0].setAttribute('class', 'studentStatistic');
+		_d.getElementsByClassName('page-item item-task-list minHeight390')[0].remove();
+		_d.getElementsByClassName('subNav clearfix')[0].remove();
+		setInterval(function() {
+			_l.reload();
+		}, 90000);
+	} else if (_l.href.includes('passport2.') && _l.href.includes('login?refer=http') && autoLogin == 1) {
+		if (!(/^1[3456789]\d{9}$/.test(phoneNumber))) {
+			alert('自动登录的手机号填写错误，无法登陆')
+			return;
+		}
+		if (password == '') {
+			alert('未填写登录密码，无法登陆')
+			return;
+		}
+		GM_xmlhttpRequest({
+			method: "get",
+			url: 'https://passport2-api.chaoxing.com/v11/loginregister?cx_xxt_passport=json&uname=' +
+				phoneNumber + '&code=' + encodeURIComponent(password),
+			onload: function(res) {
+				try {
+					let ispass = JSON.parse(res.responseText);
+					if (ispass['status']) {
+						_l.href = decodeURIComponent(getQueryVariable('refer'));
+					} else {
+						alert(ispass['mes']);
+					}
+				} catch (err) {
+					alert('登陆失败');
+				}
+			},
+			onerror: function(err) {
+				alert('登陆错误');
+			}
+		});
+	} else if (_l.href.includes('unrivalxxtbackground')) {
+		_d.getElementsByTagName("html")[0].innerHTML = `
+    <!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>学习通挂机小助手</title>
+        <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+        <link href="https://z.chaoxing.com/yanshi/css/bootstrap.min.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="row" style="margin: 10px;">
+            <div class="col-md-6 col-md-offset-3">
+                <div class="header clearfix">
+                    <h3 class="text-muted" style="margin-top: 20px;margin-bottom: 0;float: left;">学习通挂机小助手&ensp;</h3>
+                </div>
+                <hr style="margin-top: 10px;margin-bottom: 20px;">
+                <div id="ads" class="panel panel-info" style="display: none;">
+                </div>
+                <div class="panel panel-info">
+                    <div class="panel-heading">任务列表</div>
+                    <div class="panel-body" id='joblist'>
+                    </div>
+                </div>
+                <div class="panel panel-info">
+                    <div class="panel-heading">运行日志</div>
+                    <div class="panel-body">
+                        <div id="result" style="overflow:auto;line-height: 30px;">
+                            <div id="log">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
+    `;
+		var logs = {
+			"logArry": [],
+			"addLog": function(str, color = "black") {
+				if (this.logArry.length >= 50) {
+					this.logArry.splice(0, 1);
+				}
+				var nowTime = new Date(),
+					nowHour = (Array(2).join(0) + nowTime.getHours()).slice(-2),
+					nowMin = (Array(2).join(0) + nowTime.getMinutes()).slice(-2),
+					nowSec = (Array(2).join(0) + nowTime.getSeconds()).slice(-2),
+					logElement = _d.getElementById('log'),
+					logStr = "";
+				this.logArry.push("<span style='color: " + color + "'>[" + nowHour + ":" + nowMin + ":" +
+					nowSec + "] " + str + "</span>");
+				for (let logI = 0, logLen = this.logArry.length; logI < logLen; logI++) {
+					logStr += this.logArry[logI] + "<br>";
+				}
+				_d.getElementById('log').innerHTML = logStr;
+				logElement.scrollTop = logElement.scrollHeight;
+			}
+		};
+		logs.addLog('此页面不必保持在最前端，后台会自动进行任务', 'green');
+		setInterval(function() {
+			logs.addLog('此页面不必保持在最前端，后台会自动进行任务', 'green');
+			logs.addLog('如想禁用后台刷视频功能，请关闭脚本并重启浏览器', 'blue');
+		}, 120000)
+		GM_addValueChangeListener('unrivalxxtbackgroundinfo', function(name, old_value, new_value, remote) {
+			if (old_value != new_value) {
+				logs.addLog(new_value);
+			}
+		});
+		setInterval(function() {
+			if (Math.round(new Date() / 1000) - parseInt(GM_getValue('unrivalBackgroundVideoEnable', '6')) >
+				15) {
+				logs.addLog('超星挂机小助手可能运行异常，如页面无反应，请尝试重启脚本猫或重启浏览器');
+			}
+		}, 10000);
+		var loopShow = () => {
+			let jobList = GM_getValue('unrivalBackgroundList', '1');
+			if (jobList == '1') {
+				_d.getElementById('joblist').innerHTML = '请将“超星挂机小助手”升级到最新版并重启浏览器';
+			} else {
+				try {
+					let jobHtml = '';
+					for (let i = 0, l = jobList.length; i < l; i++) {
+						let status = '';
+						if (jobList[i]['done']) {
+							status = '已完成';
+						} else if (parseInt(jobList[i]['playTime']) > 0) {
+							status = '进行中';
+						} else {
+							status = '等待中';
+						}
+						if (jobList[i]['review']) {
+							status += '：复习模式';
+						}
+						jobHtml += `
+                            <div class="panel panel-default">
+                                <div class="panel-body">
+                                    ` + '[' + status + ']' + jobList[i]['name'] + `
+                                </div>
+                            </div>`
+					}
+					_d.getElementById('joblist').innerHTML = jobHtml;
+				} catch (e) {
+					_d.getElementById('joblist').innerHTML = '请将“超星挂机小助手”升级到最新版并重启浏览器！';
+				}
+			}
+		}
+		loopShow();
+		setInterval(loopShow, 10000);
+	}
+})();
